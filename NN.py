@@ -16,9 +16,10 @@ class Layer:
         self.nInputs = nInputs
         self.nOutputs = nOutputs
         self.predictions = []
-
+        self.deltaOutputs = np.zeros([nOutputs, 1])
+        self.deltaHidden = np.zeros([nOutputs, 1])
         # insert random weights including bias
-        self.weightsArray = np.random.uniform(low=-0.05, high=0.05, size=(nOutputs, nInputs + 1))
+        self.weightsArray = np.random.uniform(low=0.1, high=0.1, size=(nOutputs, nInputs + 1))
 
     # Forward Propagation method
     def forwardProp(self):
@@ -34,21 +35,35 @@ class Layer:
         self.predictions = softmax(self.activations)
 
     # Back Propagation method
-    # Compute lambda for the layer
     # Update weights
-    # Compute delta weights
+    # Compute delta for the output layer
+    def computeDeltaOutput(self):
+        for k in range(self.activations.size):
+            self.deltaOutputs[k] =  self.activations[k] * (1-self.activations[k]) * (self.target[k] - self.activations[k])
+
+    def computeDeltaHidden(self, outputLayer):
+        # loop on hidden nodes without bias and calculate 
+        # delta
+        for j in range(self.activations.size - 1):
+            sumK = 0
+            for k in range(outputLayer.activations.size):
+                sumK += outputLayer.weightsArray[k][j] * outputLayer.deltaOutputs[k]
+            self.deltaHidden[j] = self.activations[j] * (1 - self.activations[j]) * sumK     
 
     # Input nodes setter
     def setInput(self, inputNodes):
         self.inputNodes = inputNodes
+    
+    def setTarget(self, target):
+        self.target = target
 
     # Add bias to input nodes
     def addBiasInput(self):
-        self.inputNodes = np.append(self.inputNodes, -1)
+        self.inputNodes = np.append(self.inputNodes, 1)
 
     # Add bias to activation nodes
     def addBiasActivations(self):
-        self.activations = np.append(self.activations, -1)
+        self.activations = np.append(self.activations, 1)
 
 
 
@@ -80,11 +95,13 @@ labels_test = ohe.transform(labels_test)
 labels_test = labels_test.toarray()
 
 # Number of hidden nodes
-n = 3
-
+n = 2
+picture_train = [[1,0]]
+label_train = [[0.9]]
 # Initialize Layers
-hiddenLayer = Layer(picture_train[0], 784, n, 0.01)
-outputLayer = Layer(picture_train[0], n , 10, 0.01)
+hiddenLayer = Layer(picture_train[0], 2, n, 0.01)
+outputLayer = Layer(picture_train[0], n , 1, 0.01)
+outputLayer.setTarget(label_train[0])
 
 # Set input to hidden layer
 hiddenLayer.setInput(picture_train[0])
@@ -100,8 +117,14 @@ hiddenLayer.addBiasActivations()
 
 # Compute output layer activiations
 outputLayer.setInput(hiddenLayer.activations)
+
 outputLayer.forwardProp()
 
+#Compute deltaK
+outputLayer.computeDeltaOutput()
+
+#Compute deltaJ
+hiddenLayer.computeDeltaHidden(outputLayer)
 # Compute softmax
 outputLayer.softmax()
 print("End")
