@@ -11,16 +11,19 @@ from scipy.special import softmax
 
 class Layer:
     # Constructor
-    def __init__(self, inputNodes, nInputs, nOutputs, step):
+    def __init__(self, inputNodes, nInputs, nOutputs, step, momentum):
         self.inputNodes = inputNodes
         self.nInputs = nInputs
         self.nOutputs = nOutputs
+        self.step = step
         self.predictions = []
         self.deltaOutputs = np.zeros([nOutputs, 1])
         self.deltaHidden = np.zeros([nOutputs, 1])
+        self.delWeight = np.zeros([nOutputs, nInputs + 1])
+        self.momentum = momentum
         # insert random weights including bias
         self.weightsArray = np.random.uniform(low=0.1, high=0.1, size=(nOutputs, nInputs + 1))
-
+        
     # Forward Propagation method
     def forwardProp(self):
         self.activations = np.dot(self.inputNodes ,np.transpose(self.weightsArray))
@@ -41,15 +44,29 @@ class Layer:
         for k in range(self.activations.size):
             self.deltaOutputs[k] =  self.activations[k] * (1-self.activations[k]) * (self.target[k] - self.activations[k])
 
+    # Compute delta for the hidden layer
     def computeDeltaHidden(self, outputLayer):
         # loop on hidden nodes without bias and calculate 
-        # delta
+        # delta with respect to output layer delta
         for j in range(self.activations.size - 1):
             sumK = 0
             for k in range(outputLayer.activations.size):
                 sumK += outputLayer.weightsArray[k][j] * outputLayer.deltaOutputs[k]
             self.deltaHidden[j] = self.activations[j] * (1 - self.activations[j]) * sumK     
 
+    # Compute delta weights in the outputLayer and update weights
+    def updateOutputWeights(self, hiddenLayer):
+        for k in range(self.activations.size):
+            for j in range(hiddenLayer.activations.size):
+                self.delWeight[k][j] = self.step * self.deltaOutputs[k] * hiddenLayer.activations[j] + momentum * self.delWeight[k][j]
+        self.weightsArray += self.delWeight
+
+    # Compute weights in hidden layer and update weights
+    def updateHiddenWeights(self):
+        for j in range(self.activations.size - 1):
+            for i in range(self.inputNodes.size):
+                self.delWeight[j][i] = self.step * self.deltaHidden[j] * self.inputNodes[i] + momentum * self.delWeight[j][i]
+        self.weightsArray += self.delWeight
     # Input nodes setter
     def setInput(self, inputNodes):
         self.inputNodes = inputNodes
@@ -64,7 +81,7 @@ class Layer:
     # Add bias to activation nodes
     def addBiasActivations(self):
         self.activations = np.append(self.activations, 1)
-
+    
 
 
 
@@ -96,11 +113,13 @@ labels_test = labels_test.toarray()
 
 # Number of hidden nodes
 n = 2
+step = 0.2
+momentum = 0.9
 picture_train = [[1,0]]
 label_train = [[0.9]]
 # Initialize Layers
-hiddenLayer = Layer(picture_train[0], 2, n, 0.01)
-outputLayer = Layer(picture_train[0], n , 1, 0.01)
+hiddenLayer = Layer(picture_train[0], 2, n, step, momentum)
+outputLayer = Layer(picture_train[0], n , 1, step, momentum)
 outputLayer.setTarget(label_train[0])
 
 # Set input to hidden layer
@@ -120,11 +139,18 @@ outputLayer.setInput(hiddenLayer.activations)
 
 outputLayer.forwardProp()
 
-#Compute deltaK
+# Compute deltaK
 outputLayer.computeDeltaOutput()
 
-#Compute deltaJ
+# Compute deltaJ
 hiddenLayer.computeDeltaHidden(outputLayer)
+
+# Update Output weights
+outputLayer.updateOutputWeights(hiddenLayer)
+
+# Update Hidden weights
+hiddenLayer.updateHiddenWeights()
+
 # Compute softmax
 outputLayer.softmax()
 print("End")
