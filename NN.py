@@ -109,8 +109,6 @@ def train(inputImg, target ,hiddenLayer, outputLayer):
 
 def getAccuracy(trainImgs, trainLabels, hiddenLayer, outputLayer, confusionActual, confusionPrediction):
     Trues = 0
-    confusionPrediction = []
-    confusionActual = []
     for img in range(trainImgs.shape[0]):
 
         # Set input to hidden layer
@@ -145,6 +143,34 @@ def getAccuracy(trainImgs, trainLabels, hiddenLayer, outputLayer, confusionActua
         confusionActual.append(actual)
 
     return Trues / trainImgs.shape[0]
+
+def plotAccuracy(testAccuracyArray, trainAccuracyArray, epochs):
+    import matplotlib.pyplot as plt 
+  
+    # line 1 points 
+    x1 = list(range(epochs )) 
+    y1 = trainAccuracyArray 
+    # plotting the line 1 points  
+    plt.plot(x1, y1, label = "train") 
+    
+    # line 2 points 
+    x2 = x1
+    y2 = testAccuracyArray
+    # plotting the line 2 points  
+    plt.plot(x2, y2, label = "test") 
+    
+    # naming the x axis 
+    plt.xlabel('epochs') 
+    # naming the y axis 
+    plt.ylabel('accuracy') 
+    # giving a title to my graph 
+    plt.title('Train and test accuracies plot') 
+    
+    # show a legend on the plot 
+    plt.legend() 
+    
+    # function to show the plot 
+    plt.show() 
 
 
 
@@ -186,12 +212,12 @@ outputLayer = Layer(picture_train[0], n , 10, step, momentum)
 # Arrays storing accuracies
 trainAccuracyArray = []
 testAccuracyArray = []
-confusionPrediction = []
-confusionActual = []
 
-epochs = 10
+
+epochs = 3
 for epoch in range(0, epochs):
-    trainTrues = 0
+    confusionPrediction = []
+    confusionActual = []
     for img in range(picture_train.shape[0]):
         train(picture_train[img], label_train[img], hiddenLayer, outputLayer)
 
@@ -200,4 +226,17 @@ for epoch in range(0, epochs):
     trainAccuracy = getAccuracy(picture_train, label_train,hiddenLayer, outputLayer, confusionActual, confusionPrediction)    
     testAccuracy = getAccuracy(picture_test, labels_test, hiddenLayer, outputLayer, confusionActual, confusionPrediction)
     print("Epoch #" + str(epoch+1) + ": train accuracy: " + str(trainAccuracy)+ ": test accuracy: " + str(testAccuracy))
-print("End")
+    
+    # Append in the Arrays of accuracies to be plots
+    trainAccuracyArray.append(trainAccuracy)
+    testAccuracyArray.append(testAccuracy)
+
+# Create confusion matrix
+confusionMatrix = confusion_matrix(confusionActual ,confusionPrediction)
+print(confusionMatrix)
+df_cm = pd.DataFrame(confusionMatrix, index = [i for i in "0123456789"],
+                  columns = [i for i in "0123456789"])
+plt.figure(figsize = (10,7))
+sn.heatmap(df_cm, annot=True, fmt='g')
+plt.show()
+plotAccuracy(testAccuracyArray, trainAccuracyArray, epochs)
